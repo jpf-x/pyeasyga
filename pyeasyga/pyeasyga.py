@@ -11,6 +11,7 @@ from operator import attrgetter
 
 from six.moves import range
 
+infinity=float('inf')
 
 class GeneticAlgorithm(object):
     """Genetic Algorithm class.
@@ -82,7 +83,14 @@ class GeneticAlgorithm(object):
             :returns: candidate solution representation as a list
 
             """
-            return [self.random.randint(0, 1) for _ in range(len(seed_data))]
+            ret=[]
+            for i in range(len(seed_data)):
+                if isinstance(seed_data[i],Gene):
+                    seed_data[i].initialize_value()
+                    ret+=seed_data[i].get_binary()
+                else:
+                    ret+=[self.random.randint(0,1)]
+            return ret
 
         def crossover(parent_1, parent_2):
             """Crossover (mate) two parents to produce two children.
@@ -143,10 +151,14 @@ class GeneticAlgorithm(object):
         # If using a single worker, run on a simple for loop to avoid losing
         # time creating processes.
         if n_workers == 1:
-
             for individual in self.current_generation:
-                individual.fitness = self.fitness_function(
-                    individual.genes, self.seed_data)
+                 try:
+                     phenotype=individual.as_phenotype(self.seed_data)
+                     individual.fitness = self.fitness_function(
+                         phenotype, self.seed_data)
+                 except InvalidGene:
+                     phenotype=None
+                     individual.fitness=-infinity if self.maximise_fitness else infinity
         else:
 
             if "process" in parallel_type.lower():
@@ -156,13 +168,22 @@ class GeneticAlgorithm(object):
 
             # Create two lists from the same size to be passed as args to the
             # map function.
-            genes = [individual.genes for individual in self.current_generation]
-            data = [self.seed_data for _ in self.current_generation]
+            genes=[]
+            data=[]
+            individuals=[]
+            for individual in self.current_generation:
+                try:
+                    phenotype=individual.as_phenotype(self.seed_data)
+                    genes.append(phenotype)
+                    data.append(self.seed_data)
+                    individuals.append(individual)
+                except InvalidGene:
+                    individual.fitness=-infinity if self.maximise_fitness else infinity
 
             with executor as pool:
                 results = pool.map(self.fitness_function, genes, data)
 
-            for individual, result in zip(self.current_generation, results):
+            for individual, result in zip(individuals, results):
                 individual.fitness = result
 
     def rank_population(self):
@@ -245,12 +266,19 @@ class GeneticAlgorithm(object):
         generation.
         """
         best = self.current_generation[0]
-        return (best.fitness, best.genes)
+        return (best.fitness, best.as_phenotype(self.seed_data))
 
     def last_generation(self):
         """Return members of the last generation as a generator function."""
-        return ((member.fitness, member.genes) for member
-                in self.current_generation)
+        report=[]
+        for member in self.current_generation:
+            try:
+                phenotype=member.as_phenotype(self.seed_data)
+            except InvalidGene:
+                phenotype=None
+            report.append((member.fitness, phenotype))
+
+        return tuple(report)
 
 
 class Chromosome(object):
@@ -259,10 +287,77 @@ class Chromosome(object):
     """
     def __init__(self, genes):
         """Initialise the Chromosome."""
-        self.genes = genes
+        self.genes=[]
+        for gene in genes:
+            if isinstance(gene,Gene):
+                self.genes+=gene.get_binary()
+            else:
+                self.genes.append(gene)
         self.fitness = 0
 
     def __repr__(self):
         """Return initialised Chromosome representation in human readable form.
         """
         return repr((self.fitness, self.genes))
+
+    def as_phenotype(self,seed_data):
+        phenotype=phenotype_from_genes(self.genes,seed_data)
+        return phenotype
+        
+
+class Gene(object):
+    """
+Binary representation of a set of values.
+"""
+    def __init__(self,possible_values):
+        from math import floor,log
+        self._possible_values=list(set(possible_values))
+        self._len=len(possible_values)   # this is the number that requires binary representation
+        self._digits=floor(log(self._len,2))+1 # binary digits
+        self._index=None # index to current value from list of possible values
+        self._value=None # current value at _index
+
+    def __getitem__(self,key):
+        return self._possible_values[key]
+
+    @property
+    def value(self):
+        return self._value
+
+    def get(self,n):
+        """Get binary gene value at index n"""
+        assert n<self._len+1,\
+               f'gene value not defined at index {n}'
+        a=[int(i) for i in list(bin(n))[2:]]
+        a=[0 for i in range(self._digits-len(a))]+a
+        return a
+
+    def get_binary(self):
+        return self.get(self._index)
+
+    def initialize_value(self):
+        import random
+        self._index=random.randint(0,self._len-1)
+        self._value=self._possible_values[self._index]
+
+class InvalidGene(Exception):
+    pass
+
+def phenotype_from_genes(member_genes,seed_data):
+    i=0
+    values=[]
+    for _ in seed_data:
+        if isinstance(_,Gene):
+            bin_gene=member_genes[i:i+_._digits]
+            s=''.join([str(x) for x in bin_gene])
+            key=int(s,base=2)
+            try:
+                value=_[key]
+            except IndexError:
+                raise InvalidGene()
+            values.append(value)
+            i+=_._digits
+        else:
+            i+=1
+            values.append(_)
+    return values
