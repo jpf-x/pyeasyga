@@ -100,9 +100,15 @@ class GeneticAlgorithm(object):
             :returns: tuple containing two children
 
             """
-            index = self.random.randrange(1, len(parent_1))
-            child_1 = parent_1[:index] + parent_2[index:]
-            child_2 = parent_2[:index] + parent_1[index:]
+            child_1=[]
+            child_2=[]
+            for index in range(len(parent_1)):
+                if self.random.random()<.5:
+                  child_1.append(parent_1[index])
+                  child_2.append(parent_2[index])
+                else:
+                  child_1.append(parent_2[index])
+                  child_2.append(parent_1[index])
             return child_1, child_2
 
         def mutate(individual):
@@ -344,6 +350,7 @@ class InvalidGene(Exception):
     pass
 
 def phenotype_from_genes(member_genes,seed_data):
+    """Translate genes to phenotype."""
     i=0
     values=[]
     for _ in seed_data:
