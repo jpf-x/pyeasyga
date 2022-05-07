@@ -45,6 +45,7 @@ class GeneticAlgorithm(object):
                  maximise_fitness=True,
                  verbose=False,
                  random_state=None,
+                 bit_mutation_probability=None,
                  tournament_split=10,):
         """Instantiate the Genetic Algorithm.
 
@@ -53,8 +54,9 @@ class GeneticAlgorithm(object):
         :param int population_size: size of population
         :param int generations: number of generations to evolve
         :param float crossover_probability: probability of crossover operation
-        :param float mutation_probability: probability of mutation operation
+        :param float mutation_probability: probability of individual mutation operation
         :param int: random seed. defaults to None
+        :param float bit_mutation_probability: probability of bit mutation per generation. ignore mutation_probability.
         :param int tournament_split: split of population for tournament selection, e.g. 4 samples from 25% of population
 
         """
@@ -63,7 +65,11 @@ class GeneticAlgorithm(object):
         self.population_size = population_size
         self.generations = generations
         self.crossover_probability = crossover_probability
-        self.mutation_probability = mutation_probability
+        if not bit_mutation_probability:
+            self.mutation_probability = mutation_probability
+        else:
+            self.mutation_probability = 1.0
+        self.bit_mutation_probability=bit_mutation_probability
         self.elitism = elitism
         self.maximise_fitness = maximise_fitness
         self.verbose = verbose
@@ -114,10 +120,16 @@ class GeneticAlgorithm(object):
                   child_2.append(parent_1[index])
             return child_1, child_2
 
-        def mutate(individual):
+        def _mutate_genes(genes):
             """Reverse the bit of a random index in an individual."""
-            mutate_index = self.random.randrange(len(individual))
-            individual[mutate_index] = (0, 1)[individual[mutate_index] == 0]
+            mutate_index = self.random.randrange(len(genes))
+            genes[mutate_index] = (0, 1)[genes[mutate_index] == 0]
+
+        def _mutate_bits(bits):
+            """Reverse the bits of genes with bit_mutation_probability."""
+            for mutate_index in range(len(bits)):
+                if self.random.random()<self.bit_mutation_probability:
+                    bits[mutate_index] = (0, 1)[bits[mutate_index] == 0]
 
         def random_selection(population):
             """Select and return a random member of the population."""
@@ -140,7 +152,10 @@ class GeneticAlgorithm(object):
         self.random_selection = random_selection
         self.create_individual = create_individual
         self.crossover_function = crossover
-        self.mutate_function = mutate
+        if not self.bit_mutation_probability:
+            self.mutate_function = _mutate_genes
+        else:
+            self.mutate_function = _mutate_bits
         self.selection_function = self.tournament_selection
 
     def create_initial_population(self):
