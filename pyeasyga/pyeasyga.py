@@ -313,12 +313,15 @@ class GeneticAlgorithm(object):
     def number_unique(self):
         return len(list(set(tuple(x.genes) for x in self.current_generation)))        
 
-    def best_individual(self):
+    def best_individual(self,as_phenotype=False):
         """Return the individual with the best fitness in the current
         generation.
         """
         best = self.current_generation[0]
-        return (best.fitness, best.as_phenotype(self.seed_data))
+        if not as_phenotype:
+            return (best.fitness, best.genes)
+        else:
+            return (best.fitness, best.as_phenotype(self.seed_data))
 
     def last_generation(self):
         """Return members of the last generation as a generator function."""
@@ -407,6 +410,6 @@ def phenotype_from_genes(member_genes,seed_data):
             values.append(value)
             i+=_._digits
         else:
+            values.append(member_genes[i])
             i+=1
-            values.append(_)
     return values

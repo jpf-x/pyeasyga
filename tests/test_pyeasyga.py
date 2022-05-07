@@ -38,7 +38,7 @@ class TestPyeasyga(unittest.TestCase):
         self.population.append(member_3)
         self.population.append(member_4)
 
-        self.ga = pyeasyga.GeneticAlgorithm(self.seed_data)
+        self.ga = pyeasyga.GeneticAlgorithm(self.seed_data,elitism=True)
         self.ga.population_size = 10
         self.ga.generations = 10
 
@@ -55,7 +55,7 @@ class TestPyeasyga(unittest.TestCase):
 
         assert ga_1.population_size == 50
         assert ga_1.generations == 100
-        assert ga_1.elitism is True
+        assert ga_1.elitism is False
         assert ga_1.crossover_probability == 0.8
         assert ga_1.mutation_probability == 0.2
 
@@ -131,7 +131,7 @@ class TestPyeasyga(unittest.TestCase):
         self.ga.selection_function = self.ga.tournament_selection
         individual = self.ga.selection_function(self.ga.current_generation)
 
-        assert individual.genes == [1, 1, 0, 0, 1]
+        assert individual.genes == [1, 1, 0, 0, 1],f'{str(individual.genes)} != [1, 1, 0, 0, 1]'
         assert individual.fitness == 33
         assert len(individual.genes) == 5
         assert individual in self.population
