@@ -303,6 +303,12 @@ class GeneticAlgorithm(object):
                 n_workers=n_workers, parallel_type=parallel_type
             )
 
+    @property
+    def uniques(self):
+        """Return list of unique individuals.
+        """
+        return list(set(tuple(x.as_phenotype(self.seed_data)) for x in self.current_generation))
+
     def best_individual(self):
         """Return the individual with the best fitness in the current
         generation.
