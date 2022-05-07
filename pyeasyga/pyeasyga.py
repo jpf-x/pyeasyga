@@ -44,7 +44,8 @@ class GeneticAlgorithm(object):
                  elitism=True,
                  maximise_fitness=True,
                  verbose=False,
-                 random_state=None):
+                 random_state=None,
+                 tournament_split=10,):
         """Instantiate the Genetic Algorithm.
 
         :param seed_data: input data to the Genetic Algorithm
@@ -54,6 +55,7 @@ class GeneticAlgorithm(object):
         :param float crossover_probability: probability of crossover operation
         :param float mutation_probability: probability of mutation operation
         :param int: random seed. defaults to None
+        :param int tournament_split: split of population for tournament selection, e.g. 4 samples from 25% of population
 
         """
 
@@ -65,6 +67,7 @@ class GeneticAlgorithm(object):
         self.elitism = elitism
         self.maximise_fitness = maximise_fitness
         self.verbose = verbose
+        self.tournament_split=tournament_split
 
         # seed random number generator
         self.random = random.Random(random_state)
@@ -133,7 +136,7 @@ class GeneticAlgorithm(object):
 
         self.fitness_function = None
         self.tournament_selection = tournament_selection
-        self.tournament_size = self.population_size // 10
+        self.tournament_size = self.population_size // self.tournament_split
         self.random_selection = random_selection
         self.create_individual = create_individual
         self.crossover_function = crossover
