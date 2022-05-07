@@ -322,16 +322,12 @@ class GeneticAlgorithm(object):
 
     def last_generation(self):
         """Return members of the last generation as a generator function."""
-        report=[]
         for member in self.current_generation:
             try:
                 phenotype=member.as_phenotype(self.seed_data)
             except InvalidGene:
                 phenotype=None
-            report.append((member.fitness, phenotype))
-
-        return tuple(report)
-
+            yield (member.fitness, phenotype)
 
 class Chromosome(object):
     """ Chromosome class that encapsulates an individual's fitness and solution
