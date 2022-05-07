@@ -31,7 +31,25 @@ class GeneticAlgorithm(object):
     >>>                 member.count(1) == 2])
     >>> easyga.fitness_function = fitness
     >>> easyga.run()
-    >>> print easyga.best_individual()
+    >>> print(easyga.best_individual())
+
+
+    A simple example using the Gene class:
+    >>> # Find maximum of function (fitness)
+    >>> from pyeasyga.pyeasyga import GeneticAlgorithm,Gene
+    >>> # Define all possible values of each variable
+    >>> geneX=Gene(list(range(0,100)))
+    >>> geneY=Gene(list(range(0,100)))
+    >>> input_data=[geneX,geneY]
+    >>> # using bit_mutation_probability.
+    >>> easyga=GeneticAlgorithm(input_data,bit_mutation_probability=0.1)
+    >>> def fitness(phenotype,data):
+    >>>     x,y=phenotype
+    >>>     return -x**2-y**2+2*x
+    >>> easyga.fitness_function=fitness
+    >>> easyga.run()
+    >>> print(easyga.best_individual())
+    >>> # yields solution: (1, [1,0]), the fitness function maximum is 1 when x=1,y=0.
 
     """
 
@@ -41,7 +59,7 @@ class GeneticAlgorithm(object):
                  generations=100,
                  crossover_probability=0.8,
                  mutation_probability=0.2,
-                 elitism=True,
+                 elitism=False,
                  maximise_fitness=True,
                  verbose=False,
                  random_state=None,
@@ -168,7 +186,7 @@ class GeneticAlgorithm(object):
             initial_population.append(individual)
         self.current_generation = initial_population
 
-    def calculate_population_fitness(self, n_workers=None, parallel_type="processing"):
+    def calculate_population_fitness(self, n_workers=1, parallel_type="processing"):
         """Calculate the fitness of every member of the given population using
         the supplied fitness_function.
         """
@@ -252,7 +270,7 @@ class GeneticAlgorithm(object):
 
         self.current_generation = new_population
 
-    def create_first_generation(self, n_workers=None, parallel_type="processing"):
+    def create_first_generation(self, n_workers=1, parallel_type="processing"):
         """Create the first population, calculate the population's fitness and
         rank the population by fitness according to the order specified.
         """
@@ -262,7 +280,7 @@ class GeneticAlgorithm(object):
         )
         self.rank_population()
 
-    def create_next_generation(self, n_workers=None, parallel_type="processing"):
+    def create_next_generation(self, n_workers=1, parallel_type="processing"):
         """Create subsequent populations, calculate the population fitness and
         rank the population by fitness in the order specified.
         """
@@ -274,7 +292,7 @@ class GeneticAlgorithm(object):
         if self.verbose:
             print("Fitness: %f" % self.best_individual()[0])
 
-    def run(self, n_workers=None, parallel_type="processing"):
+    def run(self, n_workers=1, parallel_type="processing"):
         """Run (solve) the Genetic Algorithm."""
         self.create_first_generation(
                 n_workers=n_workers, parallel_type=parallel_type
