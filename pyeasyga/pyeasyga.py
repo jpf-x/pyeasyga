@@ -309,6 +309,10 @@ class GeneticAlgorithm(object):
         """
         return list(set(tuple(x.as_phenotype(self.seed_data)) for x in self.current_generation))
 
+    @property
+    def number_unique(self):
+        return len(list(set(tuple(x.genes) for x in self.current_generation)))        
+
     def best_individual(self):
         """Return the individual with the best fitness in the current
         generation.
