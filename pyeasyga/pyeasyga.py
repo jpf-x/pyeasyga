@@ -2,6 +2,8 @@
 """
     pyeasyga module
 
+ jpf-x fork: add binary representation of genes in Gene class
+
 """
 
 import random
@@ -64,7 +66,8 @@ class GeneticAlgorithm(object):
                  verbose=False,
                  random_state=None,
                  bit_mutation_probability=None,
-                 tournament_split=10,):
+                 tournament_split=10,
+                 selection='tournament'):
         """Instantiate the Genetic Algorithm.
 
         :param seed_data: input data to the Genetic Algorithm
@@ -92,6 +95,7 @@ class GeneticAlgorithm(object):
         self.maximise_fitness = maximise_fitness
         self.verbose = verbose
         self.tournament_split=tournament_split
+        self.selection=selection
 
         # seed random number generator
         self.random = random.Random(random_state)
@@ -164,8 +168,66 @@ class GeneticAlgorithm(object):
                 key=attrgetter('fitness'), reverse=self.maximise_fitness)
             return members[0]
 
+        def natural_selection(population):
+            """Select an individual from population with probability proportional to fitness
+            """
+            from numpy import exp,log
+
+            #print([valid.fitness for valid in valids])
+            #valids=valids[:-self.tournament_size]
+            #members = self.random.sample(population, self.tournament_size)
+            valids=[member for member in population if abs(member.fitness)!=infinity]
+            valids.sort(key=lambda x: x.fitness,reverse=self.maximise_fitness) # best to worst individuals
+            extreme_function=min if self.maximise_fitness else max
+            extreme=extreme_function(v.fitness for v in valids)
+            m=-1**(not self.maximise_fitness)
+
+            def rescale(positives):
+                rescaled=[]
+                minimum=0.
+                maximum=10.
+                mx=max(positives)
+                mn=min(positives)
+                for p in positives:
+                    v=minimum+(p-mn)*(maximum-minimum)/(mx-mn)
+                    rescaled.append(v)
+                
+                return rescaled
+            def cdf(valids):
+
+                FUN=exp
+                positive=[m*(member.fitness-extreme) for member in valids]
+                positive=rescale(positive)
+                pdfbar=[]
+                s=0.
+                for im,member in enumerate(valids):
+                    v=FUN(positive[im])
+                    pdfbar.append(v)
+                    s+=v
+                pdfbar=[c/s for c in pdfbar]
+                cdfbar=[]
+                s=0.
+                for v in pdfbar:
+                    cdfbar.append(v+s)
+                    s+=v
+                cdfbar=[v/s for v in cdfbar]
+                return cdfbar
+
+            cdfbar=cdf(valids)
+            #print(list(zip([valid.fitness for valid in valids],cdfbar)))
+            rn=self.random.random()
+            selected=None
+            #select
+            for ix,v in enumerate(valids):
+                if rn<cdfbar[ix]:
+                    selected=v
+                    break
+            #print('selected: ',selected,extreme)
+            return selected
+
         self.fitness_function = None
         self.tournament_selection = tournament_selection
+        self.natural_selection=natural_selection
         self.tournament_size = self.population_size // self.tournament_split
         self.random_selection = random_selection
         self.create_individual = create_individual
@@ -174,7 +236,10 @@ class GeneticAlgorithm(object):
             self.mutate_function = _mutate_genes
         else:
             self.mutate_function = _mutate_bits
-        self.selection_function = self.tournament_selection
+        if self.selection=='tournament':
+            self.selection_function = self.tournament_selection
+        elif self.selection=='natural':
+            self.selection_function = self.natural_selection
 
     def create_initial_population(self):
         """Create members of the first population randomly.
@@ -298,10 +363,17 @@ class GeneticAlgorithm(object):
                 n_workers=n_workers, parallel_type=parallel_type
             )
 
-        for _ in range(1, self.generations):
-            self.create_next_generation(
-                n_workers=n_workers, parallel_type=parallel_type
-            )
+        try:
+            for _ in range(1, self.generations):
+                self.create_next_generation(
+                    n_workers=n_workers, parallel_type=parallel_type
+                )
+                best=self.best_individual(as_phenotype=True)
+                bestb=self.best_individual()
+                print(_,best,bestb,self.number_unique,)
+        except KeyboardInterrupt:
+            print(_,self.best_individual(),self.number_unique)
+            print(self.uniques)
 
     @property
     def uniques(self):
@@ -339,17 +411,25 @@ class Chromosome(object):
     def __init__(self, genes):
         """Initialise the Chromosome."""
         self.genes=[]
+        self._digits=0
         for gene in genes:
             if isinstance(gene,Gene):
-                self.genes+=gene.get_binary()
+                entry=gene.get_binary()
+                self.genes+=entry
+                self._digits+=len(entry)
             else:
                 self.genes.append(gene)
+                self._digits+=1
         self.fitness = 0
 
     def __repr__(self):
         """Return initialised Chromosome representation in human readable form.
         """
         return repr((self.fitness, self.genes))
+
+    @property
+    def digits(self):
+        return self._digits
 
     def as_phenotype(self,seed_data):
         phenotype=phenotype_from_genes(self.genes,seed_data)
@@ -374,6 +454,10 @@ Binary representation of a set of values.
     @property
     def value(self):
         return self._value
+
+    @property
+    def digits(self):
+        return self._digits
 
     def get(self,n):
         """Get binary gene value at index n"""
