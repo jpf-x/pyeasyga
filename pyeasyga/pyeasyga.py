@@ -16,12 +16,16 @@ from six.moves import range
 from .constraints import Constraints
 
 class Default:
+    GENERATIONS=100
+    POPULATION_SIZE=50
     GENE_TYPE=0
-    MUTATION_TYPE=0
     MUTATION_PROBABILITY=.04
     GENE_MUTATION_PROBABILITY=.04
     CROSSOVER_PROBABILITY=0.8
     WORKERS=1
+    ELITISM=True
+    TOURNAMENT_SPLIT=10
+    SELECTION='tournament'
 
 infinity=float('inf')
 
@@ -68,19 +72,18 @@ class GeneticAlgorithm(object):
 
     def __init__(self,
                  seed_data,
-                 population_size=50,
-                 generations=100,
+                 population_size=Default.POPULATION_SIZE,
+                 generations=Default.GENERATIONS,
                  crossover_probability=Default.CROSSOVER_PROBABILITY,
                  mutation_probability=Default.MUTATION_PROBABILITY,
-                 elitism=False,
+                 elitism=Default.ELITISM,
                  maximise_fitness=True,
                  verbose=False,
                  random_state=None,
                  gene_mutation_probability=Default.GENE_MUTATION_PROBABILITY,
-                 tournament_split=10,
-                 selection='tournament',
+                 tournament_split=Default.TOURNAMENT_SPLIT,
+                 selection=Default.SELECTION,
                  gene_type=Default.GENE_TYPE,
-                 mutation_type=Default.MUTATION_TYPE,
                  constraints=None):
         """Instantiate the Genetic Algorithm.
 
@@ -250,8 +253,6 @@ class GeneticAlgorithm(object):
 
             # Create two lists from the same size to be passed as args to the
             # map function.
-            genes=[]
-            data=[]
             individuals=[]
             for individual in self.current_generation:
                 try:
@@ -300,13 +301,9 @@ class GeneticAlgorithm(object):
 
             if child_1.is_valid:
                 new_population.append(child_1)
-                # print(f'keeping valid {child_1}')
-            else:
-                # print(f'aborting invalid {child_1}')
-                continue
 
-#            if len(new_population) < self.population_size:
-#                new_population.append(child_2)
+            if len(new_population) < self.population_size and child_2.is_valid:
+                new_population.append(child_2)
 
         if self.elitism:
             new_population[0] = elite
@@ -457,6 +454,16 @@ class Chromosome(object):
         new.random = random.Random(None)
         new.constraints=self.constraints
         return new
+
+    def as_dict(self):
+        D={'class':self.__class__.__name__}
+        for attr in ['fitness',]:
+            D.update({attr:getattr(self,attr)})
+        D['genes']=[]
+        for gene in self.genes:
+            D['genes'].append(gene.as_dict())
+        # note that constraints are missing
+        return D
 
 class Gene(object):
     """

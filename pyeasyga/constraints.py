@@ -18,4 +18,3 @@ class Constraints(HasMembers):
 
     def __call__(self,*vars):
         return all(c(*vars) for c in self.members) if self.members else 1
-            
