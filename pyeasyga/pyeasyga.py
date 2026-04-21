@@ -127,6 +127,31 @@ class GeneticAlgorithm(object):
             self.selection_function=self.random_selection
         self.constraints=Constraints(constraints) if constraints else Constraints([lambda *v: 1])
 
+    @classmethod
+    def from_dict(cls,D):
+        kwargs={}
+        for attr in ['seed_data','population_size','generations','crossover_probability','mutation_probability',\
+                        'gene_mutation_probability','elitism','maximise_fitness','verbose','tournament_split',\
+                        'tournament_split','selection','tournament_size','gene_type']:
+            kwargs.update({attr:D[attr]})
+        obj=cls(**kwargs) # note that constraints and fitness_function must be reloaded
+        for chromosome in D['chromosomes']:
+            obj.current_generation.append(Chromosome.from_dict(chromosome))
+        return obj
+
+    def to_dict(self):
+        D={'class':self.__class__.__name__}
+        for attr in ['seed_data','population_size','generations','crossover_probability','mutation_probability',\
+                        'gene_mutation_probability','elitism','maximise_fitness','verbose','tournament_split',\
+                        'tournament_split','selection','tournament_size','gene_type']:
+            D.update({attr:getattr(self,attr)})
+        D['chromosomes']=[]
+        for chromosome in self.current_generation:
+            D['chromosomes'].append(chromosome.as_dict())
+
+        # note that constraints and fitness_function are missing
+        return D
+
     def create_individual(self,with_values=None):
         """Create a candidate solution representation.
 
@@ -381,10 +406,19 @@ class Chromosome(object):
     """ Chromosome class that encapsulates an individual's fitness and solution
     representation.
     """
-    def __init__(self, genes=None, random_state=None, constraints=None):
+    def __init__(self, genes=None, random_state=None, constraints=None,fitness=0):
         """Initialise the Chromosome."""
-        self.genes=genes if genes else []
-        self.fitness = 0
+        self.genes=[]
+        if genes:
+            for gene in genes:
+                if isinstance(gene,Gene):
+                    self.genes.append(gene)
+                else: # must be possible values for gene desired
+                    new_gene=Gene(gene)
+                    new_gene.initialize_value()
+                    self.genes.append(new_gene)
+
+        self.fitness = fitness
         # seed random number generator
         self.random = random.Random(random_state)
         self.constraints=Constraints(constraints) if constraints else []
@@ -454,6 +488,16 @@ class Chromosome(object):
         new.random = random.Random(None)
         new.constraints=self.constraints
         return new
+
+    @classmethod
+    def from_dict(cls,D):
+        kwargs={}
+        for attr in ['fitness']:
+            kwargs.update({attr:D[attr]})
+        obj=cls(**kwargs) # note that constraints must be reloaded
+        for gene in D['genes']:
+            obj.genes.append(Gene.from_dict(gene))
+        return obj
 
     def as_dict(self):
         D={'class':self.__class__.__name__}
@@ -573,9 +617,17 @@ Binary representation of a set of values.
         new.random = random.Random(None)
         return new
 
+    @classmethod
+    def from_dict(cls,D):
+        kwargs={}
+        for attr in ['_possible_values','_index','_value','_bin_value','mutation_probability','_gene_type']:
+            kwargs.update({attr:D[attr]})
+        obj=cls(**kwargs) # note that constraints must be reloaded
+        return obj
+
     def as_dict(self):
         D={'class':self.__class__.__name__}
-        for attr in ['_possible_values','_index','_value','_bin_value']:
+        for attr in ['_possible_values','_index','_value','_bin_value','mutation_probability','_gene_type']:
             D.update({attr:getattr(self,attr)})
         return D
 
