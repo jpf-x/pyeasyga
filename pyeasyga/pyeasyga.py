@@ -152,6 +152,11 @@ class GeneticAlgorithm(object):
         # note that constraints and fitness_function are missing
         return D
 
+    def load_constraints(self,constraints):
+        self.constraints=Constraints(constraints) if constraints else Constraints([lambda *v: 1])
+        for chromosome in self.current_generation:
+            chromosome.load_constraints(self.constraints)
+
     def create_individual(self,with_values=None):
         """Create a candidate solution representation.
 
@@ -444,6 +449,9 @@ class Chromosome(object):
         else:
             for i in range(len(self.genes)):
                 self.genes[i].initialize_value(to_value=to_value[i])
+
+    def load_constraints(self,constraints):
+        self.constraints=Constraints(constraints) if constraints else []
 
     @property
     def phenotype(self):
