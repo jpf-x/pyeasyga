@@ -55,8 +55,8 @@ class GeneticAlgorithm(object):
     >>> # Find maximum of function (fitness)
     >>> from pyeasyga.pyeasyga import GeneticAlgorithm,Gene
     >>> # Define all possible values of each variable
-    >>> geneX=Gene(list(range(0,100)))
-    >>> geneY=Gene(list(range(0,100)))
+    >>> geneX=list(range(0,100))
+    >>> geneY=list(range(0,100))
     >>> input_data=[geneX,geneY]
     >>> # using gene_mutation_probability.
     >>> easyga=GeneticAlgorithm(input_data,gene_mutation_probability=0.1)
@@ -147,7 +147,7 @@ class GeneticAlgorithm(object):
             D.update({attr:getattr(self,attr)})
         D['chromosomes']=[]
         for chromosome in self.current_generation:
-            D['chromosomes'].append(chromosome.as_dict())
+            D['chromosomes'].append(chromosome.to_dict())
 
         # note that constraints and fitness_function are missing
         return D
@@ -499,13 +499,13 @@ class Chromosome(object):
             obj.genes.append(Gene.from_dict(gene))
         return obj
 
-    def as_dict(self):
+    def to_dict(self):
         D={'class':self.__class__.__name__}
         for attr in ['fitness',]:
             D.update({attr:getattr(self,attr)})
         D['genes']=[]
         for gene in self.genes:
-            D['genes'].append(gene.as_dict())
+            D['genes'].append(gene.to_dict())
         # note that constraints are missing
         return D
 
@@ -625,7 +625,7 @@ Binary representation of a set of values.
         obj=cls(**kwargs) # note that constraints must be reloaded
         return obj
 
-    def as_dict(self):
+    def to_dict(self):
         D={'class':self.__class__.__name__}
         for attr in ['_possible_values','_index','_value','_bin_value','mutation_probability','_gene_type']:
             D.update({attr:getattr(self,attr)})
