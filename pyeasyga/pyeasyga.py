@@ -125,7 +125,7 @@ class GeneticAlgorithm(object):
             self.selection_function = self.natural_selection
         else:
             self.selection_function=self.random_selection
-        self.constraints=Constraints(constraints) if constraints else Constraints([lambda *v: 1])
+        self.load_constraints(constraints)
 
     @classmethod
     def from_dict(cls,D):
@@ -153,7 +153,10 @@ class GeneticAlgorithm(object):
         return D
 
     def load_constraints(self,constraints):
-        self.constraints=Constraints(constraints) if constraints else Constraints([lambda *v: 1])
+        if constraints:
+            self.constraints=constraints if isinstance(constraints,Constraints) else Constraints(constraints)
+        else:
+            self.constraints=Constraints([lambda *v: 1])
         for chromosome in self.current_generation:
             chromosome.load_constraints(self.constraints)
 
@@ -203,8 +206,8 @@ class GeneticAlgorithm(object):
         #members = self.random.sample(population, self.tournament_size)
         valids=[member for member in self.current_generation if abs(member.fitness)!=infinity]
         valids.sort(key=lambda x: x.fitness,reverse=self.maximise_fitness) # best to worst individuals
-        extreme_function=min if self.maximise_fitness else max
-        extreme=extreme_function(v.fitness for v in valids)
+        worst_function=min if self.maximise_fitness else max
+        worst=worst_function(v.fitness for v in valids)
         m=-1**(not self.maximise_fitness)
 
         def rescale(positives):
@@ -221,7 +224,7 @@ class GeneticAlgorithm(object):
         def cdf(valids):
 
             FUN=exp
-            positive=[m*(member.fitness-extreme) for member in valids]
+            positive=[m*(member.fitness-worstfirst) for member in valids]
             positive=rescale(positive)
             pdfbar=[]
             s=0.
@@ -255,8 +258,9 @@ class GeneticAlgorithm(object):
         """
         initial_population = []
         for _ in range(self.population_size):
-            genes = self.create_individual()
-            individual = Chromosome(genes,constraints=self.constraints)
+            individual = self.create_individual()
+            while not individual.is_valid:
+                individual = self.create_individual()
             initial_population.append(individual)
         self.current_generation = initial_population
 
@@ -398,15 +402,6 @@ class GeneticAlgorithm(object):
         best = self.current_generation[0]
         return best
 
-    def last_generation(self):
-        """Return members of the last generation as a generator function."""
-        for member in self.current_generation:
-            try:
-                phenotype=member.phenotype
-            except InvalidGene:
-                phenotype=None
-            yield (member.fitness, phenotype)
-
 class Chromosome(object):
     """ Chromosome class that encapsulates an individual's fitness and solution
     representation.
@@ -426,7 +421,7 @@ class Chromosome(object):
         self.fitness = fitness
         # seed random number generator
         self.random = random.Random(random_state)
-        self.constraints=Constraints(constraints) if constraints else []
+        self.load_constraints(constraints)
 
     def __getitem__(self,key):
         return self.genes[key]
@@ -451,7 +446,10 @@ class Chromosome(object):
                 self.genes[i].initialize_value(to_value=to_value[i])
 
     def load_constraints(self,constraints):
-        self.constraints=Constraints(constraints) if constraints else []
+        if constraints:
+            self.constraints=constraints if isinstance(constraints,Constraints) else Constraints(constraints)
+        else:
+            self.constraints=Constraints([lambda *v: 1])
 
     @property
     def phenotype(self):
@@ -490,11 +488,10 @@ class Chromosome(object):
         return self.constraints(*self.phenotype)
 
     def copy(self):
-        new=Chromosome()
+        new=Chromosome(constraints=self.constraints)
         new.genes=[gene.copy() for gene in self.genes]
         new.fitness = self.fitness
         new.random = random.Random(None)
-        new.constraints=self.constraints
         return new
 
     @classmethod
